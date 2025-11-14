@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ../backend
+    command: ["go", "run", "./cmd/api"]
+    env_file:
+      - ../backend/.env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+  frontend:
+    build: ../frontend
+    command: ["pnpm", "run", "dev", "--", "--host", "0.0.0.0"]
+    env_file:
+      - ../frontend/.env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: goshopdev
+      POSTGRES_PASSWORD: goshopdev
+      POSTGRES_DB: goshopdev
+    ports:
+      - "5432:5432"
