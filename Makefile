@@ -1,4 +1,4 @@
-.PHONY: dev backend frontend up down
+.PHONY: dev up down backend-local frontend-local
 
 dev:
 	cd deployments && docker compose up --build
@@ -13,4 +13,4 @@ backend-local:
 	cd backend && go run ./cmd/api
 
 frontend-local:
-	cd frontend && npm run dev
+	cd frontend && pnpm run dev
