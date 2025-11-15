@@ -1,0 +1,47 @@
+# OS / system files
+.DS_Store
+Thumbs.db
+
+# Go build
+bin/
+build/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Go cache
+*.out
+
+# Env files
+*.env
+!.env.example
+
+# Logs
+*.log
+
+# Node / React
+node_modules/
+dist/
+coverage/
+vite.config.*.timestamp*
+
+# PNPM
+pnpm-lock.yaml
+
+# Docker
+docker-data/
+postgres_data/
+*.pid
+
+# Frontend caches
+.cache/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
