@@ -6,9 +6,16 @@ import (
 	"go-shop-app-backend/internal/infra/config"
 	"go-shop-app-backend/internal/infra/db"
 	httph "go-shop-app-backend/internal/infra/http"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+
+	if err := godotenv.Load(); err != nil {
+		log.Println("warning: .env file not found, using system environment variables")
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal("config error:", err)
@@ -18,6 +25,7 @@ func main() {
 	if err != nil {
 		log.Fatal("db error:", err)
 	}
+	defer database.Close()
 
 	r := httph.NewRouter(database, cfg)
 
