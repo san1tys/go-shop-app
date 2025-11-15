@@ -1,31 +1,54 @@
 version: "3.9"
 
 services:
-  backend:
-    build: ../backend
-    command: ["go", "run", "./cmd/api"]
-    env_file:
-      - ../backend/.env
-    ports:
-      - "8080:8080"
-    depends_on:
-      - db
-
-  frontend:
-    build: ../frontend
-    command: ["pnpm", "run", "dev", "--", "--host", "0.0.0.0"]
-    env_file:
-      - ../frontend/.env
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-
   db:
     image: postgres:16
+    container_name: go_shop_postgres
     environment:
       POSTGRES_USER: goshopdev
       POSTGRES_PASSWORD: goshopdev
       POSTGRES_DB: goshopdev
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - go_shop_network
+
+  backend:
+    image: golang:1.24
+    working_dir: /app
+    volumes:
+      - ../backend:/app
+    command: ["go", "run", "./cmd/api"]
+    env_file:
+      - ../backend/.env
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+    networks:
+      - go_shop_network
+
+  # фронт подключи позже, когда будет готов
+  # frontend:
+  #   image: node:20
+  #   working_dir: /app
+  #   volumes:
+  #     - ../frontend:/app
+  #   command: ["pnpm", "run", "dev", "--", "--host", "0.0.0.0"]
+  #   env_file:
+  #     - ../frontend/.env
+  #   depends_on:
+  #     - backend
+  #   ports:
+  #     - "3000:3000"
+  #   networks:
+  #     - go_shop_network
+
+volumes:
+  postgres_data:
+
+networks:
+  go_shop_network:
+    driver: bridge
