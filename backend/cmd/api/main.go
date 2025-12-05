@@ -1,36 +1,50 @@
 package main
 
 import (
+	"context"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	"go-shop-app-backend/internal/app"
 	"go-shop-app-backend/internal/infra/config"
-	"go-shop-app-backend/internal/infra/db"
-	httph "go-shop-app-backend/internal/infra/http"
+	"go-shop-app-backend/pkg/logger"
 
 	"github.com/joho/godotenv"
 )
 
 func main() {
-
-	if err := godotenv.Load(); err != nil {
-		log.Println("warning: .env file not found, using system environment variables")
-	}
+	_ = godotenv.Load()
+	logger.Init()
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal("config error:", err)
+		log.Fatalf("config error: %v", err)
 	}
 
-	database, err := db.NewPostgres(cfg)
+	container, err := app.NewContainer(cfg)
 	if err != nil {
-		log.Fatal("db error:", err)
+		log.Fatalf("container init error: %v", err)
 	}
-	defer database.Close()
 
-	r := httph.NewRouter(database, cfg)
+	application := app.NewApp(container)
 
-	log.Println("server started on port", cfg.ServerPort)
-	if err := r.Run(":" + cfg.ServerPort); err != nil {
-		log.Fatal(err)
+	go func() {
+		if err := application.Run(); err != nil {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := application.Shutdown(ctx); err != nil {
+		log.Printf("graceful shutdown error: %v", err)
 	}
 }

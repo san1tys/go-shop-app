@@ -1,0 +1,25 @@
+package app
+
+import (
+	"context"
+)
+
+type App struct {
+	Container *Container
+	Server    *Server
+}
+
+func NewApp(c *Container) *App {
+	return &App{
+		Container: c,
+		Server:    NewHTTPServer(c),
+	}
+}
+
+func (a *App) Run() error {
+	return a.Server.Start()
+}
+
+func (a *App) Shutdown(ctx context.Context) error {
+	return a.Server.Shutdown(ctx)
+}
