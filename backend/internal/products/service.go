@@ -1,29 +1,108 @@
 package products
 
-type Service struct {
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"go-shop-app-backend/internal/domain"
+)
+
+type Service interface {
+	Create(ctx context.Context, input CreateProductInput) (*Product, error)
+	GetAll(ctx context.Context) ([]*Product, error)
+	GetByID(ctx context.Context, id int64) (*Product, error)
+	Update(ctx context.Context, id int64, input UpdateProductInput) (*Product, error)
+	Delete(ctx context.Context, id int64) error
+}
+
+type service struct {
 	repo Repository
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo Repository) Service {
+	return &service{repo: repo}
 }
 
-func (s *Service) Create(input CreateProductInput) (Product, error) {
-	return s.repo.Create(input)
+func (s *service) Create(ctx context.Context, input CreateProductInput) (*Product, error) {
+	if input.Name == "" {
+		return nil, domain.NewValidationError("name is required")
+	}
+	if input.Price <= 0 {
+		return nil, domain.NewValidationError("price must be greater than 0")
+	}
+	if input.Stock < 0 {
+		return nil, domain.NewValidationError("stock cannot be negative")
+	}
+
+	product, err := s.repo.Create(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("create product: %w", err)
+	}
+
+	return product, nil
 }
 
-func (s *Service) GetAll() ([]Product, error) {
-	return s.repo.GetAll()
+func (s *service) GetAll(ctx context.Context) ([]*Product, error) {
+	products, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get all products: %w", err)
+	}
+
+	return products, nil
 }
 
-func (s *Service) GetByID(id int64) (Product, error) {
-	return s.repo.GetByID(id)
+func (s *service) GetByID(ctx context.Context, id int64) (*Product, error) {
+	if id <= 0 {
+		return nil, domain.NewValidationError("invalid id")
+	}
+
+	product, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, fmt.Errorf("get product by id: %w", err)
+	}
+
+	return product, nil
 }
 
-func (s *Service) Update(id int64, input UpdateProductInput) (Product, error) {
-	return s.repo.Update(id, input)
+func (s *service) Update(ctx context.Context, id int64, input UpdateProductInput) (*Product, error) {
+	if id <= 0 {
+		return nil, domain.NewValidationError("invalid id")
+	}
+
+	if input.Price != nil && *input.Price <= 0 {
+		return nil, domain.NewValidationError("price must be greater than 0")
+	}
+	if input.Stock != nil && *input.Stock < 0 {
+		return nil, domain.NewValidationError("stock cannot be negative")
+	}
+
+	product, err := s.repo.Update(ctx, id, input)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, fmt.Errorf("update product: %w", err)
+	}
+
+	return product, nil
 }
 
-func (s *Service) Delete(id int64) error {
-	return s.repo.Delete(id)
+func (s *service) Delete(ctx context.Context, id int64) error {
+	if id <= 0 {
+		return domain.NewValidationError("invalid id")
+	}
+
+	err := s.repo.Delete(ctx, id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return domain.ErrNotFound
+		}
+		return fmt.Errorf("delete product: %w", err)
+	}
+
+	return nil
 }

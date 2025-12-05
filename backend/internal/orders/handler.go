@@ -1,4 +1,4 @@
-package products
+package orders
 
 import (
 	"errors"
@@ -19,17 +19,35 @@ func NewHandler(service Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
-	g := r.Group("/products")
+	g := r.Group("/orders")
 
-	g.POST("/", h.create)
-	g.GET("/", h.getAll)
+	g.POST("/", h.createOrder)
 	g.GET("/:id", h.getByID)
-	g.PUT("/:id", h.update)
-	g.DELETE("/:id", h.delete)
+	g.GET("/me", h.listMy)
+	g.POST("/:id/cancel", h.cancel)
 }
 
-func (h *Handler) create(c *gin.Context) {
-	var input CreateProductInput
+func (h *Handler) createOrder(c *gin.Context) {
+	// userID берём из контекста, куда его положил AuthMiddleware
+	userIDVal, ok := c.Get("userID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "unauthorized",
+			"message": "user is not authenticated",
+		})
+		return
+	}
+
+	userID, ok := userIDVal.(int64)
+	if !ok || userID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "unauthorized",
+			"message": "invalid user id in context",
+		})
+		return
+	}
+
+	var input CreateOrderInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "invalid_request_body",
@@ -38,7 +56,7 @@ func (h *Handler) create(c *gin.Context) {
 		return
 	}
 
-	product, err := h.service.Create(c.Request.Context(), input)
+	order, items, err := h.service.CreateOrder(c.Request.Context(), userID, input)
 	if err != nil {
 		if domain.IsValidationError(err) {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -49,26 +67,15 @@ func (h *Handler) create(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "failed_to_create_product",
+			"error":   "failed_to_create_order",
 			"message": err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusCreated, product)
-}
+	order.Items = items
 
-func (h *Handler) getAll(c *gin.Context) {
-	products, err := h.service.GetAll(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "failed_to_get_products",
-			"message": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, products)
+	c.JSON(http.StatusCreated, order)
 }
 
 func (h *Handler) getByID(c *gin.Context) {
@@ -81,46 +88,56 @@ func (h *Handler) getByID(c *gin.Context) {
 		return
 	}
 
-	product, err := h.service.GetByID(c.Request.Context(), id)
+	order, items, err := h.service.GetByID(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
-				"error":   "product_not_found",
-				"message": "product not found",
+				"error":   "order_not_found",
+				"message": "order not found",
+			})
+			return
+		}
+
+		if domain.IsValidationError(err) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "validation_error",
+				"message": err.Error(),
 			})
 			return
 		}
 
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "failed_to_get_product",
+			"error":   "failed_to_get_order",
 			"message": err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, product)
+	order.Items = items
+
+	c.JSON(http.StatusOK, order)
 }
 
-func (h *Handler) update(c *gin.Context) {
-	id, err := parseIDParam(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_id",
-			"message": "id must be a positive integer",
+func (h *Handler) listMy(c *gin.Context) {
+	userIDVal, ok := c.Get("userID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "unauthorized",
+			"message": "user is not authenticated",
 		})
 		return
 	}
 
-	var input UpdateProductInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_request_body",
-			"message": err.Error(),
+	userID, ok := userIDVal.(int64)
+	if !ok || userID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "unauthorized",
+			"message": "invalid user id in context",
 		})
 		return
 	}
 
-	product, err := h.service.Update(c.Request.Context(), id, input)
+	ordersList, err := h.service.ListByUser(c.Request.Context(), userID)
 	if err != nil {
 		if domain.IsValidationError(err) {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -130,25 +147,17 @@ func (h *Handler) update(c *gin.Context) {
 			return
 		}
 
-		if errors.Is(err, domain.ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error":   "product_not_found",
-				"message": "product not found",
-			})
-			return
-		}
-
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "failed_to_update_product",
+			"error":   "failed_to_list_orders",
 			"message": err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, product)
+	c.JSON(http.StatusOK, ordersList)
 }
 
-func (h *Handler) delete(c *gin.Context) {
+func (h *Handler) cancel(c *gin.Context) {
 	id, err := parseIDParam(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -158,18 +167,25 @@ func (h *Handler) delete(c *gin.Context) {
 		return
 	}
 
-	err = h.service.Delete(c.Request.Context(), id)
-	if err != nil {
+	if err := h.service.Cancel(c.Request.Context(), id); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
-				"error":   "product_not_found",
-				"message": "product not found",
+				"error":   "order_not_found",
+				"message": "order not found",
+			})
+			return
+		}
+
+		if domain.IsValidationError(err) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "validation_error",
+				"message": err.Error(),
 			})
 			return
 		}
 
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "failed_to_delete_product",
+			"error":   "failed_to_cancel_order",
 			"message": err.Error(),
 		})
 		return
