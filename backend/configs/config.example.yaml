@@ -1,0 +1,6 @@
+
+server_port: "8080"
+
+db_dsn: "postgres://postgres:postgres@localhost:5432/go_shop?sslmode=disable"
+
+jwt_secret: "super-secret-dev-key-change-me"
