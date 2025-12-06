@@ -1,5 +1,5 @@
 package products
-
+// service.go
 import (
 	"context"
 	"errors"

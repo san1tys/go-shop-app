@@ -1,5 +1,5 @@
 package products
-
+// handler.go
 import (
 	"errors"
 	"net/http"

@@ -1,5 +1,5 @@
 package products
-
+// модель продукта
 import "time"
 
 type Product struct {
