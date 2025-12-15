@@ -27,6 +27,19 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 	g.POST("/:id/cancel", h.cancel)
 }
 
+// createOrder godoc
+//
+// @Summary Create order for current user
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param input body CreateOrderInput true "Create order input"
+// @Success 201 {object} Order
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/orders [post]
 func (h *Handler) createOrder(c *gin.Context) {
 	// userID берём из контекста, куда его положил AuthMiddleware
 	userIDVal, ok := c.Get("userID")
@@ -78,6 +91,19 @@ func (h *Handler) createOrder(c *gin.Context) {
 	c.JSON(http.StatusCreated, order)
 }
 
+// getByID godoc
+//
+// @Summary Get order by ID
+// @Tags orders
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Order ID"
+// @Success 200 {object} Order
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/orders/{id} [get]
 func (h *Handler) getByID(c *gin.Context) {
 	id, err := parseIDParam(c.Param("id"))
 	if err != nil {
@@ -118,6 +144,16 @@ func (h *Handler) getByID(c *gin.Context) {
 	c.JSON(http.StatusOK, order)
 }
 
+// listMy godoc
+//
+// @Summary List orders for current user
+// @Tags orders
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} Order
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/orders/me [get]
 func (h *Handler) listMy(c *gin.Context) {
 	userIDVal, ok := c.Get("userID")
 	if !ok {
@@ -157,6 +193,19 @@ func (h *Handler) listMy(c *gin.Context) {
 	c.JSON(http.StatusOK, ordersList)
 }
 
+// cancel godoc
+//
+// @Summary Cancel order
+// @Tags orders
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Order ID"
+// @Success 204
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/orders/{id}/cancel [post]
 func (h *Handler) cancel(c *gin.Context) {
 	id, err := parseIDParam(c.Param("id"))
 	if err != nil {

@@ -6,7 +6,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
+	_ "go-shop-app-backend/docs"
 	"go-shop-app-backend/internal/infra/auth"
 	"go-shop-app-backend/internal/infra/config"
 	infraDB "go-shop-app-backend/internal/infra/db"
@@ -15,11 +18,29 @@ import (
 	"go-shop-app-backend/internal/users"
 )
 
+// NewRouter инициализирует HTTP роутер.
+//
+// @title GoShop API
+// @version 1.0
+// @description Backend API for GoShop — simple e-commerce backend built with Go, Gin and PostgreSQL.
+// @BasePath /
 func NewRouter(db *sql.DB, cfg *config.Config) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
+	// Swagger UI powered by swaggo/gin-swagger.
+	// Документация берётся из пакета docs, сгенерированного swag init.
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Health check endpoint.
+	//
+	// @Summary Health check
+	// @Tags system
+	// @Produce json
+	// @Success 200 {object} map[string]string
+	// @Failure 503 {object} APIError
+	// @Router /health [get]
 	r.GET("/health", func(c *gin.Context) {
 		if err := infraDB.HealthCheck(db); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
