@@ -21,5 +21,13 @@ func (a *App) Run() error {
 }
 
 func (a *App) Shutdown(ctx context.Context) error {
-	return a.Server.Shutdown(ctx)
+	if err := a.Server.Shutdown(ctx); err != nil {
+		return err
+	}
+
+	if a.Container != nil && a.Container.WorkerPool != nil {
+		a.Container.WorkerPool.Stop()
+	}
+
+	return nil
 }

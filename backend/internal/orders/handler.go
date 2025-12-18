@@ -27,6 +27,19 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 	g.POST("/:id/cancel", h.cancel)
 }
 
+// createOrder godoc
+//
+// @Summary Create order for current user
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param input body CreateOrderInput true "Create order input"
+// @Success 201 {object} Order
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/orders [post]
 func (h *Handler) createOrder(c *gin.Context) {
 	// userID берём из контекста, куда его положил AuthMiddleware
 	userIDVal, ok := c.Get("userID")
@@ -78,6 +91,19 @@ func (h *Handler) createOrder(c *gin.Context) {
 	c.JSON(http.StatusCreated, order)
 }
 
+// getByID godoc
+//
+// @Summary Get order by ID
+// @Tags orders
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Order ID"
+// @Success 200 {object} Order
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/orders/{id} [get]
 func (h *Handler) getByID(c *gin.Context) {
 	id, err := parseIDParam(c.Param("id"))
 	if err != nil {
@@ -118,6 +144,18 @@ func (h *Handler) getByID(c *gin.Context) {
 	c.JSON(http.StatusOK, order)
 }
 
+// listMy godoc
+//
+// @Summary List orders for current user
+// @Tags orders
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number (starting from 1)" minimum(1)
+// @Param limit query int false "Page size (max 100)" minimum(1) maximum(100)
+// @Success 200 {array} Order
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/orders/me [get]
 func (h *Handler) listMy(c *gin.Context) {
 	userIDVal, ok := c.Get("userID")
 	if !ok {
@@ -137,7 +175,16 @@ func (h *Handler) listMy(c *gin.Context) {
 		return
 	}
 
-	ordersList, err := h.service.ListByUser(c.Request.Context(), userID)
+	page, limit, err := parsePagination(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_pagination",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ordersList, err := h.service.ListByUser(c.Request.Context(), userID, page, limit)
 	if err != nil {
 		if domain.IsValidationError(err) {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -157,6 +204,19 @@ func (h *Handler) listMy(c *gin.Context) {
 	c.JSON(http.StatusOK, ordersList)
 }
 
+// cancel godoc
+//
+// @Summary Cancel order
+// @Tags orders
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Order ID"
+// @Success 204
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/orders/{id}/cancel [post]
 func (h *Handler) cancel(c *gin.Context) {
 	id, err := parseIDParam(c.Param("id"))
 	if err != nil {
@@ -200,4 +260,33 @@ func parseIDParam(raw string) (int64, error) {
 		return 0, errors.New("invalid id")
 	}
 	return id, nil
+}
+
+func parsePagination(c *gin.Context) (int, int, error) {
+	pageStr := c.Query("page")
+	limitStr := c.Query("limit")
+
+	page := 1
+	limit := 20
+
+	if pageStr != "" {
+		v, err := strconv.Atoi(pageStr)
+		if err != nil || v <= 0 {
+			return 0, 0, errors.New("page must be a positive integer")
+		}
+		page = v
+	}
+
+	if limitStr != "" {
+		v, err := strconv.Atoi(limitStr)
+		if err != nil || v <= 0 {
+			return 0, 0, errors.New("limit must be a positive integer")
+		}
+		if v > 100 {
+			return 0, 0, errors.New("limit must be less than or equal to 100")
+		}
+		limit = v
+	}
+
+	return page, limit, nil
 }

@@ -24,6 +24,17 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 	}
 }
 
+// register godoc
+//
+// @Summary Register a new user
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body RegisterInput true "Register input"
+// @Success 201 {object} AuthResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/auth/register [post]
 func (h *Handler) register(c *gin.Context) {
 	var input RegisterInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -54,6 +65,17 @@ func (h *Handler) register(c *gin.Context) {
 	c.JSON(http.StatusCreated, resp)
 }
 
+// login godoc
+//
+// @Summary Login user
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body LoginInput true "Login input"
+// @Success 200 {object} AuthResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/auth/login [post]
 func (h *Handler) login(c *gin.Context) {
 	var input LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {

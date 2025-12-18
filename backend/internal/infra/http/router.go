@@ -6,20 +6,36 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
+	_ "go-shop-app-backend/docs"
 	"go-shop-app-backend/internal/infra/auth"
 	"go-shop-app-backend/internal/infra/config"
 	infraDB "go-shop-app-backend/internal/infra/db"
 	"go-shop-app-backend/internal/orders"
 	"go-shop-app-backend/internal/products"
 	"go-shop-app-backend/internal/users"
+	"go-shop-app-backend/pkg/workerpool"
 )
 
+// @title GoShop API
+// @version 1.0
+// @description Backend API for GoShop — simple e-commerce backend built with Go, Gin and PostgreSQL.
+// @BasePath /
 func NewRouter(db *sql.DB, cfg *config.Config) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// @Summary Health check
+	// @Tags system
+	// @Produce json
+	// @Success 200 {object} map[string]string
+	// @Failure 503 {object} APIError
+	// @Router /health [get]
 	r.GET("/health", func(c *gin.Context) {
 		if err := infraDB.HealthCheck(db); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
@@ -38,6 +54,7 @@ func NewRouter(db *sql.DB, cfg *config.Config) *gin.Engine {
 	v1 := api.Group("/v1")
 
 	jwtManager := auth.NewManager(cfg.JWTSecret, 24*time.Hour)
+	orderWorkerPool := workerpool.New(5)
 
 	authRequired := v1.Group("/")
 	authRequired.Use(AuthMiddleware(jwtManager))
@@ -58,7 +75,7 @@ func NewRouter(db *sql.DB, cfg *config.Config) *gin.Engine {
 	productHandler.RegisterRoutes(adminGroup)
 
 	orderRepo := orders.NewPostgresRepository(db)
-	orderService := orders.NewService(orderRepo)
+	orderService := orders.NewService(orderRepo, orderWorkerPool)
 	orderHandler := orders.NewHandler(orderService)
 	orderHandler.RegisterRoutes(authRequired)
 
