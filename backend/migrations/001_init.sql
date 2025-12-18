@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS products (
     id          BIGSERIAL PRIMARY KEY,
     name        TEXT NOT NULL,
     description TEXT,
-    price       BIGINT NOT NULL,  -- цена в минимальных единицах (тиынах/центах)
+    price       BIGINT NOT NULL,  -- цена в минимальных единицах (тенге/центах)
     stock       BIGINT NOT NULL DEFAULT 0,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
