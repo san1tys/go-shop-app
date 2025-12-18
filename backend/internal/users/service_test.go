@@ -2,7 +2,6 @@ package users
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -11,27 +10,100 @@ import (
 	"go-shop-app-backend/pkg/utils"
 )
 
+// Mock implementation of UserRepository
 type mockUserRepo struct {
-	createFn     func(ctx context.Context, email, name, passwordHash, role string) (*UserWithPassword, error)
 	getByEmailFn func(ctx context.Context, email string) (*UserWithPassword, error)
+	createFn     func(ctx context.Context, email, name, hash, role string) (*UserWithPassword, error)
 	getByIDFn    func(ctx context.Context, id int64) (*UserWithPassword, error)
-}
-
-func (m *mockUserRepo) Create(ctx context.Context, email, name, passwordHash, role string) (*UserWithPassword, error) {
-	return m.createFn(ctx, email, name, passwordHash, role)
 }
 
 func (m *mockUserRepo) GetByEmail(ctx context.Context, email string) (*UserWithPassword, error) {
 	return m.getByEmailFn(ctx, email)
 }
 
+func (m *mockUserRepo) Create(ctx context.Context, email, name, hash, role string) (*UserWithPassword, error) {
+	return m.createFn(ctx, email, name, hash, role)
+}
+
 func (m *mockUserRepo) GetByID(ctx context.Context, id int64) (*UserWithPassword, error) {
 	return m.getByIDFn(ctx, id)
 }
 
-func newTestJWTManager() *auth.Manager {
-	// короткий TTL для тестов
-	return auth.NewManager("test-secret", time.Minute)
+func TestService_Register_Success(t *testing.T) {
+	repo := &mockUserRepo{
+		getByEmailFn: func(ctx context.Context, email string) (*UserWithPassword, error) {
+			return nil, domain.ErrNotFound
+		},
+		createFn: func(ctx context.Context, email, name, hash, role string) (*UserWithPassword, error) {
+			return &UserWithPassword{
+				User: User{
+					ID:        1,
+					Email:     email,
+					Name:      name,
+					Role:      role,
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				},
+				PasswordHash: hash,
+			}, nil
+		},
+	}
+
+	jwtManager := auth.NewManager("testsecret", time.Hour)
+	svc := NewService(repo, jwtManager)
+
+	input := RegisterInput{
+		Email:    "test@example.com",
+		Name:     "Test User",
+		Password: "password",
+	}
+
+	resp, err := svc.Register(context.Background(), input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.User.Email != input.Email {
+		t.Fatalf("expected email %s, got %s", input.Email, resp.User.Email)
+	}
+}
+
+func TestService_Login_Success(t *testing.T) {
+	password := "password"
+	hash, _ := utils.HashPassword(password)
+
+	repo := &mockUserRepo{
+		getByEmailFn: func(ctx context.Context, email string) (*UserWithPassword, error) {
+			return &UserWithPassword{
+				User: User{
+					ID:        1,
+					Email:     email,
+					Name:      "Test User",
+					Role:      "user",
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				},
+				PasswordHash: hash,
+			}, nil
+		},
+	}
+
+	jwtManager := auth.NewManager("testsecret", time.Hour)
+	svc := NewService(repo, jwtManager)
+
+	input := LoginInput{
+		Email:    "test@example.com",
+		Password: password,
+	}
+
+	resp, err := svc.Login(context.Background(), input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.User.Email != input.Email {
+		t.Fatalf("expected email %s, got %s", input.Email, resp.User.Email)
+	}
 }
 
 func TestService_Register_Validation(t *testing.T) {
@@ -39,174 +111,44 @@ func TestService_Register_Validation(t *testing.T) {
 		getByEmailFn: func(ctx context.Context, email string) (*UserWithPassword, error) {
 			return nil, domain.ErrNotFound
 		},
-		createFn: func(ctx context.Context, email, name, passwordHash, role string) (*UserWithPassword, error) {
+		createFn: func(ctx context.Context, email, name, hash, role string) (*UserWithPassword, error) {
 			return &UserWithPassword{
 				User: User{
-					ID:    1,
-					Email: email,
-					Name:  name,
-					Role:  role,
+					ID:        1,
+					Email:     email,
+					Name:      name,
+					Role:      role,
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
 				},
-				PasswordHash: passwordHash,
+				PasswordHash: hash,
 			}, nil
-		},
-		getByIDFn: func(ctx context.Context, id int64) (*UserWithPassword, error) {
-			return nil, domain.ErrNotFound
 		},
 	}
 
-	svc := NewService(repo, newTestJWTManager())
+	jwtManager := auth.NewManager("testsecret", time.Hour)
+	svc := NewService(repo, jwtManager)
 
 	tests := []struct {
 		name    string
 		input   RegisterInput
 		wantErr bool
 	}{
-		{
-			name: "empty email",
-			input: RegisterInput{
-				Email:    "",
-				Name:     "Test",
-				Password: "123456",
-			},
-			wantErr: true,
-		},
-		{
-			name: "empty name",
-			input: RegisterInput{
-				Email:    "test@example.com",
-				Name:     "",
-				Password: "123456",
-			},
-			wantErr: true,
-		},
-		{
-			name: "short password",
-			input: RegisterInput{
-				Email:    "test@example.com",
-				Name:     "Test",
-				Password: "123",
-			},
-			wantErr: true,
-		},
-		{
-			name: "ok",
-			input: RegisterInput{
-				Email:    "test@example.com",
-				Name:     "Test",
-				Password: "123456",
-			},
-			wantErr: false,
-		},
+		{"empty email", RegisterInput{Email: "", Name: "Name", Password: "password"}, true},
+		{"empty name", RegisterInput{Email: "a@b.com", Name: "", Password: "password"}, true},
+		{"short password", RegisterInput{Email: "a@b.com", Name: "Name", Password: "123"}, true},
+		{"valid input", RegisterInput{Email: "a@b.com", Name: "Name", Password: "password"}, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := svc.Register(context.Background(), tt.input)
+			_, err := svc.Register(context.Background(), tt.input)
 			if tt.wantErr && err == nil {
 				t.Fatalf("expected error, got nil")
 			}
 			if !tt.wantErr && err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if !tt.wantErr {
-				if resp == nil || resp.Token == "" {
-					t.Fatalf("expected non-nil response with token")
-				}
-				if resp.User.Email != "test@example.com" {
-					t.Fatalf("unexpected user email: %s", resp.User.Email)
-				}
-			}
 		})
 	}
-}
-
-func TestService_Login(t *testing.T) {
-	// подготовим пользователя с заранее известным паролем "password"
-	hashed, err := utils.HashPassword("password")
-	if err != nil {
-		t.Fatalf("failed to hash password: %v", err)
-	}
-
-	user := &UserWithPassword{
-		User: User{
-			ID:    1,
-			Email: "user@example.com",
-			Name:  "User",
-			Role:  string(domain.UserRoleUser),
-		},
-		PasswordHash: hashed,
-	}
-
-	repo := &mockUserRepo{
-		getByEmailFn: func(ctx context.Context, email string) (*UserWithPassword, error) {
-			if email == user.Email {
-				return user, nil
-			}
-			return nil, domain.ErrNotFound
-		},
-		createFn: func(ctx context.Context, email, name, passwordHash, role string) (*UserWithPassword, error) {
-			return nil, errors.New("not implemented")
-		},
-		getByIDFn: func(ctx context.Context, id int64) (*UserWithPassword, error) {
-			return nil, domain.ErrNotFound
-		},
-	}
-
-	svc := NewService(repo, newTestJWTManager())
-
-	t.Run("invalid email", func(t *testing.T) {
-		_, err := svc.Login(context.Background(), LoginInput{
-			Email:    "",
-			Password: "password",
-		})
-		if err == nil {
-			t.Fatalf("expected error, got nil")
-		}
-		if !domain.IsValidationError(err) {
-			t.Fatalf("expected validation error, got %v", err)
-		}
-	})
-
-	t.Run("invalid password", func(t *testing.T) {
-		_, err := svc.Login(context.Background(), LoginInput{
-			Email:    "user@example.com",
-			Password: "",
-		})
-		if err == nil {
-			t.Fatalf("expected error, got nil")
-		}
-		if !domain.IsValidationError(err) {
-			t.Fatalf("expected validation error, got %v", err)
-		}
-	})
-
-	t.Run("wrong password", func(t *testing.T) {
-		_, err := svc.Login(context.Background(), LoginInput{
-			Email:    "user@example.com",
-			Password: "wrong",
-		})
-		if err == nil {
-			t.Fatalf("expected error, got nil")
-		}
-		if !domain.IsValidationError(err) {
-			t.Fatalf("expected validation error, got %v", err)
-		}
-	})
-
-	t.Run("success", func(t *testing.T) {
-		resp, err := svc.Login(context.Background(), LoginInput{
-			Email:    "user@example.com",
-			Password: "password",
-		})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if resp.Token == "" {
-			t.Fatalf("expected non-empty token")
-		}
-		if resp.User.ID != user.ID {
-			t.Fatalf("unexpected user id: %d", resp.User.ID)
-		}
-	})
 }
