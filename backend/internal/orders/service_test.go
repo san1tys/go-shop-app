@@ -38,7 +38,7 @@ func (m *mockOrderRepo) UpdateStatus(ctx context.Context, id int64, status Order
 
 func TestService_CreateOrder_Validation(t *testing.T) {
 	repo := &mockOrderRepo{}
-	svc := NewService(repo, nil) // worker pool нам не нужен для валидации
+	svc := NewService(repo, nil) 
 
 	tests := []struct {
 		name    string

@@ -19,10 +19,7 @@ import (
 	"go-shop-app-backend/pkg/workerpool"
 )
 
-// @title GoShop API
-// @version 1.0
-// @description Backend API for GoShop — simple e-commerce backend built with Go, Gin and PostgreSQL.
-// @BasePath /
+
 func NewRouter(db *sql.DB, cfg *config.Config) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger())
@@ -30,12 +27,6 @@ func NewRouter(db *sql.DB, cfg *config.Config) *gin.Engine {
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// @Summary Health check
-	// @Tags system
-	// @Produce json
-	// @Success 200 {object} map[string]string
-	// @Failure 503 {object} APIError
-	// @Router /health [get]
 	r.GET("/health", func(c *gin.Context) {
 		if err := infraDB.HealthCheck(db); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
