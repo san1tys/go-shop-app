@@ -35,3 +35,12 @@ https://www.docker.com/products/docker-desktop/
 
 ```bash
 make dev
+
+---
+
+## Seed migration with demo data
+
+- The file backend/migrations/002_seed.sql creates demo data:
+    - an administrator account: admin@example.com with password admin123 and role admin;
+    - several test products for the storefront.
+
