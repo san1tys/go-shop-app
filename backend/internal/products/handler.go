@@ -28,17 +28,6 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 	g.DELETE("/:id", h.delete)
 }
 
-// create godoc
-//
-// @Summary Create product
-// @Tags products
-// @Accept json
-// @Produce json
-// @Param input body CreateProductInput true "Create product input"
-// @Success 201 {object} Product
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /api/v1/products [post]
 func (h *Handler) create(c *gin.Context) {
 	var input CreateProductInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -69,16 +58,7 @@ func (h *Handler) create(c *gin.Context) {
 	c.JSON(http.StatusCreated, product)
 }
 
-// getAll godoc
-//
-// @Summary List products
-// @Tags products
-// @Produce json
-// @Param page query int false "Page number (starting from 1)" minimum(1)
-// @Param limit query int false "Page size (max 100)" minimum(1) maximum(100)
-// @Success 200 {array} Product
-// @Failure 500 {object} map[string]string
-// @Router /api/v1/products [get]
+
 func (h *Handler) getAll(c *gin.Context) {
 	page, limit, err := parsePagination(c)
 	if err != nil {
@@ -101,17 +81,6 @@ func (h *Handler) getAll(c *gin.Context) {
 	c.JSON(http.StatusOK, products)
 }
 
-// getByID godoc
-//
-// @Summary Get product by ID
-// @Tags products
-// @Produce json
-// @Param id path int true "Product ID"
-// @Success 200 {object} Product
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /api/v1/products/{id} [get]
 func (h *Handler) getByID(c *gin.Context) {
 	id, err := parseIDParam(c.Param("id"))
 	if err != nil {
@@ -142,19 +111,6 @@ func (h *Handler) getByID(c *gin.Context) {
 	c.JSON(http.StatusOK, product)
 }
 
-// update godoc
-//
-// @Summary Update product
-// @Tags products
-// @Accept json
-// @Produce json
-// @Param id path int true "Product ID"
-// @Param input body UpdateProductInput true "Update product input"
-// @Success 200 {object} Product
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /api/v1/products/{id} [put]
 func (h *Handler) update(c *gin.Context) {
 	id, err := parseIDParam(c.Param("id"))
 	if err != nil {
@@ -202,17 +158,6 @@ func (h *Handler) update(c *gin.Context) {
 	c.JSON(http.StatusOK, product)
 }
 
-// delete godoc
-//
-// @Summary Delete product
-// @Tags products
-// @Produce json
-// @Param id path int true "Product ID"
-// @Success 204
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /api/v1/products/{id} [delete]
 func (h *Handler) delete(c *gin.Context) {
 	id, err := parseIDParam(c.Param("id"))
 	if err != nil {
