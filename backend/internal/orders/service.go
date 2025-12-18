@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"go-shop-app-backend/internal/domain"
+	"go-shop-app-backend/pkg/logger"
+	"go-shop-app-backend/pkg/workerpool"
 )
 
 type Service interface {
@@ -16,10 +18,14 @@ type Service interface {
 
 type service struct {
 	repo Repository
+	pool *workerpool.Pool
 }
 
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository, pool *workerpool.Pool) Service {
+	return &service{
+		repo: repo,
+		pool: pool,
+	}
 }
 
 func (s *service) CreateOrder(ctx context.Context, userID int64, input CreateOrderInput) (*Order, []OrderItem, error) {
@@ -55,6 +61,18 @@ func (s *service) CreateOrder(ctx context.Context, userID int64, input CreateOrd
 	}
 
 	order.Items = items
+
+	// Отправляем фоновую задачу в worker pool — например, логирование события
+	// или отправка уведомления. Это демонстрирует использование пула воркеров.
+	if s.pool != nil {
+		_ = s.pool.Submit(func(taskCtx context.Context) {
+			logger.Info("order created asynchronously",
+				"order_id", order.ID,
+				"user_id", order.UserID,
+				"total_price", order.TotalPrice,
+			)
+		})
+	}
 
 	return order, items, nil
 }

@@ -16,6 +16,7 @@ import (
 	"go-shop-app-backend/internal/orders"
 	"go-shop-app-backend/internal/products"
 	"go-shop-app-backend/internal/users"
+	"go-shop-app-backend/pkg/workerpool"
 )
 
 // @title GoShop API
@@ -53,6 +54,7 @@ func NewRouter(db *sql.DB, cfg *config.Config) *gin.Engine {
 	v1 := api.Group("/v1")
 
 	jwtManager := auth.NewManager(cfg.JWTSecret, 24*time.Hour)
+	orderWorkerPool := workerpool.New(5)
 
 	authRequired := v1.Group("/")
 	authRequired.Use(AuthMiddleware(jwtManager))
@@ -73,7 +75,7 @@ func NewRouter(db *sql.DB, cfg *config.Config) *gin.Engine {
 	productHandler.RegisterRoutes(adminGroup)
 
 	orderRepo := orders.NewPostgresRepository(db)
-	orderService := orders.NewService(orderRepo)
+	orderService := orders.NewService(orderRepo, orderWorkerPool)
 	orderHandler := orders.NewHandler(orderService)
 	orderHandler.RegisterRoutes(authRequired)
 
