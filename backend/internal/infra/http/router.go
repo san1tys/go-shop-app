@@ -18,8 +18,6 @@ import (
 	"go-shop-app-backend/internal/users"
 )
 
-// NewRouter инициализирует HTTP роутер.
-//
 // @title GoShop API
 // @version 1.0
 // @description Backend API for GoShop — simple e-commerce backend built with Go, Gin and PostgreSQL.
@@ -29,12 +27,8 @@ func NewRouter(db *sql.DB, cfg *config.Config) *gin.Engine {
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
-	// Swagger UI powered by swaggo/gin-swagger.
-	// Документация берётся из пакета docs, сгенерированного swag init.
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Health check endpoint.
-	//
 	// @Summary Health check
 	// @Tags system
 	// @Produce json
