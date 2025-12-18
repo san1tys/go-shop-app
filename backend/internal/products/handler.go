@@ -74,11 +74,22 @@ func (h *Handler) create(c *gin.Context) {
 // @Summary List products
 // @Tags products
 // @Produce json
+// @Param page query int false "Page number (starting from 1)" minimum(1)
+// @Param limit query int false "Page size (max 100)" minimum(1) maximum(100)
 // @Success 200 {array} Product
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/products [get]
 func (h *Handler) getAll(c *gin.Context) {
-	products, err := h.service.GetAll(c.Request.Context())
+	page, limit, err := parsePagination(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_pagination",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	products, err := h.service.GetAll(c.Request.Context(), page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "failed_to_get_products",
@@ -238,4 +249,33 @@ func parseIDParam(raw string) (int64, error) {
 		return 0, errors.New("invalid id")
 	}
 	return id, nil
+}
+
+func parsePagination(c *gin.Context) (int, int, error) {
+	pageStr := c.Query("page")
+	limitStr := c.Query("limit")
+
+	page := 1
+	limit := 20
+
+	if pageStr != "" {
+		v, err := strconv.Atoi(pageStr)
+		if err != nil || v <= 0 {
+			return 0, 0, errors.New("page must be a positive integer")
+		}
+		page = v
+	}
+
+	if limitStr != "" {
+		v, err := strconv.Atoi(limitStr)
+		if err != nil || v <= 0 {
+			return 0, 0, errors.New("limit must be a positive integer")
+		}
+		if v > 100 {
+			return 0, 0, errors.New("limit must be less than or equal to 100")
+		}
+		limit = v
+	}
+
+	return page, limit, nil
 }

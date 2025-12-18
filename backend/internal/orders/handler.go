@@ -150,6 +150,8 @@ func (h *Handler) getByID(c *gin.Context) {
 // @Tags orders
 // @Produce json
 // @Security BearerAuth
+// @Param page query int false "Page number (starting from 1)" minimum(1)
+// @Param limit query int false "Page size (max 100)" minimum(1) maximum(100)
 // @Success 200 {array} Order
 // @Failure 401 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -173,7 +175,16 @@ func (h *Handler) listMy(c *gin.Context) {
 		return
 	}
 
-	ordersList, err := h.service.ListByUser(c.Request.Context(), userID)
+	page, limit, err := parsePagination(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_pagination",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ordersList, err := h.service.ListByUser(c.Request.Context(), userID, page, limit)
 	if err != nil {
 		if domain.IsValidationError(err) {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -249,4 +260,33 @@ func parseIDParam(raw string) (int64, error) {
 		return 0, errors.New("invalid id")
 	}
 	return id, nil
+}
+
+func parsePagination(c *gin.Context) (int, int, error) {
+	pageStr := c.Query("page")
+	limitStr := c.Query("limit")
+
+	page := 1
+	limit := 20
+
+	if pageStr != "" {
+		v, err := strconv.Atoi(pageStr)
+		if err != nil || v <= 0 {
+			return 0, 0, errors.New("page must be a positive integer")
+		}
+		page = v
+	}
+
+	if limitStr != "" {
+		v, err := strconv.Atoi(limitStr)
+		if err != nil || v <= 0 {
+			return 0, 0, errors.New("limit must be a positive integer")
+		}
+		if v > 100 {
+			return 0, 0, errors.New("limit must be less than or equal to 100")
+		}
+		limit = v
+	}
+
+	return page, limit, nil
 }

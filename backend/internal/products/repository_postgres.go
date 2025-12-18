@@ -48,14 +48,15 @@ func (r *postgresRepository) Create(ctx context.Context, input CreateProductInpu
 	return &p, nil
 }
 
-func (r *postgresRepository) GetAll(ctx context.Context) ([]*Product, error) {
+func (r *postgresRepository) GetAll(ctx context.Context, limit, offset int) ([]*Product, error) {
 	const query = `
         SELECT id, name, description, price, stock, created_at, updated_at
         FROM products
         ORDER BY id
+        LIMIT $1 OFFSET $2
     `
 
-	rows, err := r.db.QueryContext(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("query products: %w", err)
 	}

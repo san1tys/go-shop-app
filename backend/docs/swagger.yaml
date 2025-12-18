@@ -347,6 +347,18 @@ paths:
       - orders
   /api/v1/orders/me:
     get:
+      parameters:
+      - description: Page number (starting from 1)
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: Page size (max 100)
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -375,6 +387,18 @@ paths:
       - orders
   /api/v1/products:
     get:
+      parameters:
+      - description: Page number (starting from 1)
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: Page size (max 100)
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:

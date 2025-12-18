@@ -10,7 +10,7 @@ import (
 type Service interface {
 	CreateOrder(ctx context.Context, userID int64, input CreateOrderInput) (*Order, []OrderItem, error)
 	GetByID(ctx context.Context, id int64) (*Order, []OrderItem, error)
-	ListByUser(ctx context.Context, userID int64) ([]*Order, error)
+	ListByUser(ctx context.Context, userID int64, page, pageSize int) ([]*Order, error)
 	Cancel(ctx context.Context, id int64) error
 }
 
@@ -74,12 +74,24 @@ func (s *service) GetByID(ctx context.Context, id int64) (*Order, []OrderItem, e
 	return order, items, nil
 }
 
-func (s *service) ListByUser(ctx context.Context, userID int64) ([]*Order, error) {
+func (s *service) ListByUser(ctx context.Context, userID int64, page, pageSize int) ([]*Order, error) {
 	if userID <= 0 {
 		return nil, domain.NewValidationError("invalid user_id")
 	}
 
-	return s.repo.ListByUser(ctx, userID)
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		return nil, domain.NewValidationError("pageSize must be less than or equal to 100")
+	}
+
+	offset := (page - 1) * pageSize
+
+	return s.repo.ListByUser(ctx, userID, pageSize, offset)
 }
 
 func (s *service) Cancel(ctx context.Context, id int64) error {
