@@ -25,7 +25,6 @@ func (a *App) Shutdown(ctx context.Context) error {
 		return err
 	}
 
-	// Корректно останавливаем worker pool, чтобы дождаться фоновых задач.
 	if a.Container != nil && a.Container.WorkerPool != nil {
 		a.Container.WorkerPool.Stop()
 	}

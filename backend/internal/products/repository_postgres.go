@@ -164,9 +164,6 @@ func (r *postgresRepository) Update(ctx context.Context, id int64, input UpdateP
 		return nil, domain.ErrNotFound
 	}
 
-	// updated_at обновляется в БД, можно при желании перечитать запись
-	// но чаще в CRUD это не критично. Если хочешь точно свежее updated_at —
-	// можно повторно вызвать GetByID(ctx, id) и вернуть её.
 	return current, nil
 }
 

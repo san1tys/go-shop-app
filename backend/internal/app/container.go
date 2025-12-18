@@ -18,7 +18,6 @@ type Container struct {
 	DB     *sql.DB
 	JWT    *auth.Manager
 
-	// WorkerPool используется для фоновой обработки задач (например, пост-обработки заказов).
 	WorkerPool *workerpool.Pool
 
 	UserRepo    users.Repository
