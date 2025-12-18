@@ -5,21 +5,27 @@ import (
 	"fmt"
 
 	"go-shop-app-backend/internal/domain"
+	"go-shop-app-backend/pkg/logger"
+	"go-shop-app-backend/pkg/workerpool"
 )
 
 type Service interface {
 	CreateOrder(ctx context.Context, userID int64, input CreateOrderInput) (*Order, []OrderItem, error)
 	GetByID(ctx context.Context, id int64) (*Order, []OrderItem, error)
-	ListByUser(ctx context.Context, userID int64) ([]*Order, error)
+	ListByUser(ctx context.Context, userID int64, page, pageSize int) ([]*Order, error)
 	Cancel(ctx context.Context, id int64) error
 }
 
 type service struct {
 	repo Repository
+	pool *workerpool.Pool
 }
 
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository, pool *workerpool.Pool) Service {
+	return &service{
+		repo: repo,
+		pool: pool,
+	}
 }
 
 func (s *service) CreateOrder(ctx context.Context, userID int64, input CreateOrderInput) (*Order, []OrderItem, error) {
@@ -56,6 +62,18 @@ func (s *service) CreateOrder(ctx context.Context, userID int64, input CreateOrd
 
 	order.Items = items
 
+	// Отправляем фоновую задачу в worker pool — например, логирование события
+	// или отправка уведомления.
+	if s.pool != nil {
+		_ = s.pool.Submit(func(taskCtx context.Context) {
+			logger.Info("order created asynchronously",
+				"order_id", order.ID,
+				"user_id", order.UserID,
+				"total_price", order.TotalPrice,
+			)
+		})
+	}
+
 	return order, items, nil
 }
 
@@ -74,12 +92,24 @@ func (s *service) GetByID(ctx context.Context, id int64) (*Order, []OrderItem, e
 	return order, items, nil
 }
 
-func (s *service) ListByUser(ctx context.Context, userID int64) ([]*Order, error) {
+func (s *service) ListByUser(ctx context.Context, userID int64, page, pageSize int) ([]*Order, error) {
 	if userID <= 0 {
 		return nil, domain.NewValidationError("invalid user_id")
 	}
 
-	return s.repo.ListByUser(ctx, userID)
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		return nil, domain.NewValidationError("pageSize must be less than or equal to 100")
+	}
+
+	offset := (page - 1) * pageSize
+
+	return s.repo.ListByUser(ctx, userID, pageSize, offset)
 }
 
 func (s *service) Cancel(ctx context.Context, id int64) error {

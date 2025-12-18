@@ -48,14 +48,15 @@ func (r *postgresRepository) Create(ctx context.Context, input CreateProductInpu
 	return &p, nil
 }
 
-func (r *postgresRepository) GetAll(ctx context.Context) ([]*Product, error) {
+func (r *postgresRepository) GetAll(ctx context.Context, limit, offset int) ([]*Product, error) {
 	const query = `
         SELECT id, name, description, price, stock, created_at, updated_at
         FROM products
         ORDER BY id
+        LIMIT $1 OFFSET $2
     `
 
-	rows, err := r.db.QueryContext(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("query products: %w", err)
 	}
@@ -163,9 +164,6 @@ func (r *postgresRepository) Update(ctx context.Context, id int64, input UpdateP
 		return nil, domain.ErrNotFound
 	}
 
-	// updated_at обновляется в БД, можно при желании перечитать запись
-	// но чаще в CRUD это не критично. Если хочешь точно свежее updated_at —
-	// можно повторно вызвать GetByID(ctx, id) и вернуть её.
 	return current, nil
 }
 

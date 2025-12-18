@@ -10,7 +10,7 @@ import (
 
 type Service interface {
 	Create(ctx context.Context, input CreateProductInput) (*Product, error)
-	GetAll(ctx context.Context) ([]*Product, error)
+	GetAll(ctx context.Context, page, pageSize int) ([]*Product, error)
 	GetByID(ctx context.Context, id int64) (*Product, error)
 	Update(ctx context.Context, id int64, input UpdateProductInput) (*Product, error)
 	Delete(ctx context.Context, id int64) error
@@ -43,8 +43,20 @@ func (s *service) Create(ctx context.Context, input CreateProductInput) (*Produc
 	return product, nil
 }
 
-func (s *service) GetAll(ctx context.Context) ([]*Product, error) {
-	products, err := s.repo.GetAll(ctx)
+func (s *service) GetAll(ctx context.Context, page, pageSize int) ([]*Product, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		return nil, domain.NewValidationError("pageSize must be less than or equal to 100")
+	}
+
+	offset := (page - 1) * pageSize
+
+	products, err := s.repo.GetAll(ctx, pageSize, offset)
 	if err != nil {
 		return nil, fmt.Errorf("get all products: %w", err)
 	}

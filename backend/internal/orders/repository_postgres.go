@@ -153,15 +153,16 @@ func (r *postgresRepository) GetByID(ctx context.Context, id int64) (*Order, []O
 	return &o, items, nil
 }
 
-func (r *postgresRepository) ListByUser(ctx context.Context, userID int64) ([]*Order, error) {
+func (r *postgresRepository) ListByUser(ctx context.Context, userID int64, limit, offset int) ([]*Order, error) {
 	const query = `
         SELECT id, user_id, status, total_price, created_at, updated_at
         FROM orders
         WHERE user_id = $1
         ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
     `
 
-	rows, err := r.db.QueryContext(ctx, query, userID)
+	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("query orders by user: %w", err)
 	}
