@@ -62,8 +62,6 @@ func (s *service) CreateOrder(ctx context.Context, userID int64, input CreateOrd
 
 	order.Items = items
 
-	// Отправляем фоновую задачу в worker pool — например, логирование события
-	// или отправка уведомления.
 	if s.pool != nil {
 		_ = s.pool.Submit(func(taskCtx context.Context) {
 			logger.Info("order created asynchronously",

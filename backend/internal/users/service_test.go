@@ -122,7 +122,6 @@ func TestService_Register_Validation(t *testing.T) {
 }
 
 func TestService_Login(t *testing.T) {
-	// подготовим пользователя с заранее известным паролем "password"
 	hashed, err := utils.HashPassword("password")
 	if err != nil {
 		t.Fatalf("failed to hash password: %v", err)

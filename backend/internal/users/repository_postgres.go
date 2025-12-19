@@ -42,8 +42,6 @@ func (r *postgresRepository) Create(ctx context.Context, email, name, passwordHa
 		&u.UpdatedAt,
 	)
 	if err != nil {
-		// здесь можно разобрать ошибку на уникальность email по коду PG,
-		// но для простоты пока оставим как есть
 		return nil, fmt.Errorf("insert user: %w", err)
 	}
 

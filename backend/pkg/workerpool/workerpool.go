@@ -6,10 +6,8 @@ import (
 	"sync"
 )
 
-// Task описывает задачу, выполняемую воркером.
 type Task func(ctx context.Context)
 
-// Pool — простой worker pool поверх горутин и канала задач.
 type Pool struct {
 	tasks  chan Task
 	ctx    context.Context
@@ -17,7 +15,6 @@ type Pool struct {
 	wg     sync.WaitGroup
 }
 
-// New создаёт и запускает пул из size воркеров.
 func New(size int) *Pool {
 	if size <= 0 {
 		size = 1
@@ -25,7 +22,6 @@ func New(size int) *Pool {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	p := &Pool{
-		// небольшой буфер, чтобы не блокировать короткие всплески задач
 		tasks:  make(chan Task, size*2),
 		ctx:    ctx,
 		cancel: cancel,
@@ -54,8 +50,6 @@ func New(size int) *Pool {
 	return p
 }
 
-// Submit отправляет задачу в пул.
-// Возвращает ошибку, если пул уже остановлен.
 func (p *Pool) Submit(task Task) error {
 	if task == nil {
 		return nil
@@ -75,7 +69,6 @@ func (p *Pool) Submit(task Task) error {
 	}
 }
 
-// Stop останавливает пул: перестаёт принимать задачи и ждёт завершения воркеров.
 func (p *Pool) Stop() {
 	p.cancel()
 	close(p.tasks)
